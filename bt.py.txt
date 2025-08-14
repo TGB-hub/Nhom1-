@@ -1,0 +1,93 @@
+bt.py
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+import matplotlib.pyplot as plt
+
+# 1. Khai báo biến đầu vào và đầu ra
+performance = ctrl.Antecedent(np.arange(0, 11, 1), 'performance')
+punctuality = ctrl.Antecedent(np.arange(0, 11, 1), 'punctuality')
+overtime = ctrl.Antecedent(np.arange(1, 4, 1), 'overtime')  # 1 đến 3 giờ
+bonus = ctrl.Consequent(np.arange(0, 1001, 1), 'bonus')     # Thưởng đến 1000 USD
+
+# 2. Định nghĩa hàm thành viên
+performance['low'] = fuzz.trimf(performance.universe, [0, 0, 5])
+performance['medium'] = fuzz.trimf(performance.universe, [0, 5, 10])
+performance['high'] = fuzz.trimf(performance.universe, [5, 10, 10])
+
+punctuality['poor'] = fuzz.trimf(punctuality.universe, [0, 0, 5])
+punctuality['average'] = fuzz.trimf(punctuality.universe, [0, 5, 10])
+punctuality['good'] = fuzz.trimf(punctuality.universe, [5, 10, 10])
+
+overtime['low'] = fuzz.trimf(overtime.universe, [1, 1, 2])
+overtime['medium'] = fuzz.trimf(overtime.universe, [1, 2, 3])
+overtime['high'] = fuzz.trimf(overtime.universe, [2, 3, 3])
+
+bonus['low'] = fuzz.trimf(bonus.universe, [0, 0, 250])
+bonus['medium'] = fuzz.trimf(bonus.universe, [0, 250, 500])
+bonus['high'] = fuzz.trimf(bonus.universe, [250, 500, 750])
+bonus['most'] = fuzz.trimf(bonus.universe, [750, 1000, 1000])
+
+# 3. Quy tắc mờ
+rules = [
+    # Performance LOW
+    ctrl.Rule(performance['low'] & punctuality['poor'] & overtime['low'], bonus['low']),
+    ctrl.Rule(performance['low'] & punctuality['poor'] & overtime['medium'], bonus['low']),
+    ctrl.Rule(performance['low'] & punctuality['poor'] & overtime['high'], bonus['medium']),
+
+    ctrl.Rule(performance['low'] & punctuality['average'] & overtime['low'], bonus['low']),
+    ctrl.Rule(performance['low'] & punctuality['average'] & overtime['medium'], bonus['medium']),
+    ctrl.Rule(performance['low'] & punctuality['average'] & overtime['high'], bonus['medium']),
+
+    ctrl.Rule(performance['low'] & punctuality['good'] & overtime['low'], bonus['medium']),
+    ctrl.Rule(performance['low'] & punctuality['good'] & overtime['medium'], bonus['medium']),
+    ctrl.Rule(performance['low'] & punctuality['good'] & overtime['high'], bonus['high']),
+
+    # Performance MEDIUM
+    ctrl.Rule(performance['medium'] & punctuality['poor'] & overtime['low'], bonus['low']),
+    ctrl.Rule(performance['medium'] & punctuality['poor'] & overtime['medium'], bonus['medium']),
+    ctrl.Rule(performance['medium'] & punctuality['poor'] & overtime['high'], bonus['medium']),
+
+    ctrl.Rule(performance['medium'] & punctuality['average'] & overtime['low'], bonus['medium']),
+    ctrl.Rule(performance['medium'] & punctuality['average'] & overtime['medium'], bonus['medium']),
+    ctrl.Rule(performance['medium'] & punctuality['average'] & overtime['high'], bonus['high']),
+
+    ctrl.Rule(performance['medium'] & punctuality['good'] & overtime['low'], bonus['medium']),
+    ctrl.Rule(performance['medium'] & punctuality['good'] & overtime['medium'], bonus['high']),
+    ctrl.Rule(performance['medium'] & punctuality['good'] & overtime['high'], bonus['high']),
+
+    # Performance HIGH
+    ctrl.Rule(performance['high'] & punctuality['poor'] & overtime['low'], bonus['medium']),
+    ctrl.Rule(performance['high'] & punctuality['poor'] & overtime['medium'], bonus['medium']),
+    ctrl.Rule(performance['high'] & punctuality['poor'] & overtime['high'], bonus['high']),
+
+    ctrl.Rule(performance['high'] & punctuality['average'] & overtime['low'], bonus['medium']),
+    ctrl.Rule(performance['high'] & punctuality['average'] & overtime['medium'], bonus['high']),
+    ctrl.Rule(performance['high'] & punctuality['average'] & overtime['high'], bonus['high']),
+
+    ctrl.Rule(performance['high'] & punctuality['good'] & overtime['low'], bonus['high']),
+    ctrl.Rule(performance['high'] & punctuality['good'] & overtime['medium'], bonus['high']),
+    ctrl.Rule(performance['high'] & punctuality['good'] & overtime['high'], bonus['most']),
+]
+
+
+# 4. Tạo hệ thống và mô phỏng
+bonus_ctrl = ctrl.ControlSystem(rules)
+bonus_simulation = ctrl.ControlSystemSimulation(bonus_ctrl)
+
+# 5. Nhập dữ liệu và tính toán
+bonus_simulation.input['performance'] = 5
+bonus_simulation.input['punctuality'] = 7
+bonus_simulation.input['overtime'] = 2
+
+bonus_simulation.compute()
+
+# 6. Kết quả
+print(f" Bonus đề xuất: {bonus_simulation.output['bonus']:.2f} USD")
+
+# 7. Vẽ biểu đồ các hàm thành viên và kết quả
+performance.view()
+punctuality.view()
+overtime.view()
+bonus.view(sim=bonus_simulation)  # Hiển thị kết quả fuzzy của bonus
+plt.show()
